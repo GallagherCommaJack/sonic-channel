@@ -1,7 +1,8 @@
 use super::{ChannelMode, SonicChannel, SonicStream};
 use crate::commands::*;
 use crate::result::Result;
-use std::net::ToSocketAddrs;
+use async_trait::*;
+use std::net::SocketAddr;
 
 /// The Sonic Channel Ingest mode is used for altering the search index
 /// (push, pop and flush). Once in this mode, you cannot switch to other
@@ -16,6 +17,7 @@ use std::net::ToSocketAddrs;
 #[derive(Debug)]
 pub struct IngestChannel(SonicStream);
 
+#[async_trait]
 impl SonicChannel for IngestChannel {
     type Channel = IngestChannel;
 
@@ -23,12 +25,14 @@ impl SonicChannel for IngestChannel {
         &self.0
     }
 
-    fn start<A, S>(addr: A, password: S) -> Result<Self::Channel>
+    async fn start<A, S>(addr: A, password: S) -> Result<Self::Channel>
     where
-        A: ToSocketAddrs,
-        S: ToString,
+        A: Into<SocketAddr> + Send + 'static,
+        S: ToString + Send + 'static,
     {
-        SonicStream::connect_with_start(ChannelMode::Ingest, addr, password).map(Self)
+        SonicStream::connect_with_start(ChannelMode::Ingest, addr, password)
+            .await
+            .map(Self)
     }
 }
 

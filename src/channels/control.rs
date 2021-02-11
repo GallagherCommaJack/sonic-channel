@@ -1,7 +1,8 @@
 use super::{ChannelMode, SonicChannel, SonicStream};
 use crate::commands::*;
 use crate::result::Result;
-use std::net::ToSocketAddrs;
+use async_trait::*;
+use std::net::SocketAddr;
 
 /// The Sonic Channel Control mode is used for administration purposes.
 /// Once in this mode, you cannot switch to other modes or gain access
@@ -16,6 +17,7 @@ use std::net::ToSocketAddrs;
 #[derive(Debug)]
 pub struct ControlChannel(SonicStream);
 
+#[async_trait]
 impl SonicChannel for ControlChannel {
     type Channel = ControlChannel;
 
@@ -23,12 +25,14 @@ impl SonicChannel for ControlChannel {
         &self.0
     }
 
-    fn start<A, S>(addr: A, password: S) -> Result<Self::Channel>
+    async fn start<A, S>(addr: A, password: S) -> Result<Self::Channel>
     where
-        A: ToSocketAddrs,
-        S: ToString,
+        A: Into<SocketAddr> + Send + 'static,
+        S: ToString + Send + 'static,
     {
-        SonicStream::connect_with_start(ChannelMode::Control, addr, password).map(Self)
+        SonicStream::connect_with_start(ChannelMode::Control, addr, password)
+            .await
+            .map(Self)
     }
 }
 
@@ -89,7 +93,7 @@ impl ControlChannel {
         /// # Ok(())
         /// # }
         /// ```
-        use TriggerCommand for fn consolidate()
+        use TriggerCommand for fn consolidate<'a>()
     );
 
     init_command!(
